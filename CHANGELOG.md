@@ -3,8 +3,8 @@
 ## [vFuture]
 
 ## [vNext]
-- Bugfix: "FeatureFlags.SharpHook" set to "false" was lost when saving settings (e.g. from the GUI), as "false" was treated as the default and omitted, and the resulting empty object is not loaded. The flag is now nullable, defaulting to "true".
-- Feature: GUI - "SharpHook hotkeys" feature flag can be toggled from the global settings page.
+- Feature: Windows - "HotkeyBackend" setting ("SharpHook" (default) or "RegisterHotKey"), replacing the "FeatureFlags.SharpHook" flag (which was also lost when saving settings from the GUI). Can be set from the global settings page.
+- Feature: Windows - The "RegisterHotKey" backend now accepts "KeyChar" hotkeys too (resolved through the current keyboard layout).
 
 ## [v2.2.0] / 2026-xx-xx
 - Bugfix: On Linux, logout or shutdown was blocked by WTQ (#333).

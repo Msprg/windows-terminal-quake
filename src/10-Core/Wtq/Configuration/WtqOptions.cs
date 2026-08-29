@@ -63,16 +63,19 @@ public sealed class WtqOptions : WtqSharedOptions
 	public WtqApiOptions? Api { get; set; }
 
 	/// <summary>
-	/// Sometimes functionality is added or changed that carries more risk of introducing bugs.<br/>
+	/// (Windows only) How hotkeys are registered with the OS.<br/>
 	/// <br/>
-	/// For these cases, such functionality can be put behind a "feature flag", which makes them opt-in or opt-out.<br/>
+	/// <b>SharpHook</b> (default) uses a low-level keyboard hook, supports the most keys (including the "Windows" modifier),
+	/// but does not receive key presses while a window that runs as administrator (elevated) has focus.<br/>
+	/// <b>RegisterHotKey</b> lets Windows match the hotkeys, which also works while an elevated window has focus,
+	/// but does not support the "Windows" modifier.<br/>
 	/// <br/>
-	/// That way, we can still merge to master, and make it part of the stable release version (reducing branches, dev builds, etc.),
-	/// but still have a way back should things go awry, without reverting to a previous version.
+	/// Requires a restart of WTQ to take effect.
 	/// </summary>
-	[Display(GroupName = Gn.General, Name = "Feature flags")]
+	[DefaultValue(Wtq.Configuration.HotkeyBackend.SharpHook)]
+	[Display(GroupName = Gn.General, Name = "Hotkey backend", Prompt = "Windows only, requires restart")]
 	[JsonPropertyOrder(105)]
-	public FeatureFlags? FeatureFlags { get; set; }
+	public HotkeyBackend? HotkeyBackend { get; set; }
 
 	/// <summary>
 	/// Whether to show the GUI when WTQ is started.
@@ -109,13 +112,6 @@ public sealed class WtqOptions : WtqSharedOptions
 		foreach (var app in Apps.ToList())
 		{
 			app.PrepareForSave();
-		}
-
-		// Don't write an empty "FeatureFlags" object, when no flag is set explicitly.
-		// (An empty object is not bound to anything when loading the settings anyway.)
-		if (FeatureFlags is { SharpHook: null })
-		{
-			FeatureFlags = null;
 		}
 
 		// Explicit ToList() since we're modifying it from within the loop.

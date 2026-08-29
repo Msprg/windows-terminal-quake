@@ -18,17 +18,19 @@ public static class ServiceCollectionExtensions
 		Guard.Against.Null(services);
 		Guard.Against.Null(opts);
 
-		if (opts.FeatureFlags?.SharpHook ?? true)
-		{
-			_log.LogInformation("Using SharpHook hotkey service (new behavior, please report any issues and consider disabling this if you run into any)");
+		var backend = opts.HotkeyBackend ?? HotkeyBackend.SharpHook;
 
-			services.AddSharpHookHotkeyService();
+		if (backend == HotkeyBackend.RegisterHotKey)
+		{
+			_log.LogInformation("Using 'RegisterHotKey' hotkey backend (WinForms)");
+
+			services.AddWinFormsHotkeyService();
 		}
 		else
 		{
-			_log.LogInformation("Using WinForms hotkey service (a feature flag is available, which enables using the 'Windows' modifier)");
+			_log.LogInformation("Using 'SharpHook' hotkey backend");
 
-			services.AddWinFormsHotkeyService();
+			services.AddSharpHookHotkeyService();
 		}
 
 		return services;

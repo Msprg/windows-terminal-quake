@@ -25,42 +25,38 @@ public class WtqOptionsSaveServiceTest
 	}
 
 	[TestMethod]
-	public void FeatureFlags_SharpHookOff_IsWritten()
+	public void HotkeyBackend_RegisterHotKey_IsWritten()
 	{
 		// Arrange
-		_opts.FeatureFlags = new() { SharpHook = false };
+		_opts.HotkeyBackend = HotkeyBackend.RegisterHotKey;
 
 		// Act
 		var act = _svc.Write(_opts);
 
 		// Assert
-		StringAssert.Contains(act, "\"FeatureFlags\"");
-		StringAssert.Contains(act, "\"SharpHook\": false");
+		StringAssert.Contains(act, "\"HotkeyBackend\": \"RegisterHotKey\"");
 	}
 
 	[TestMethod]
-	public void FeatureFlags_SharpHookOn_IsWritten()
+	public void HotkeyBackend_SharpHook_IsWritten()
 	{
-		// Arrange
-		_opts.FeatureFlags = new() { SharpHook = true };
+		// Arrange (explicitly set, so it should be kept even though it's the default)
+		_opts.HotkeyBackend = HotkeyBackend.SharpHook;
 
 		// Act
 		var act = _svc.Write(_opts);
 
 		// Assert
-		StringAssert.Contains(act, "\"SharpHook\": true");
+		StringAssert.Contains(act, "\"HotkeyBackend\": \"SharpHook\"");
 	}
 
 	[TestMethod]
-	public void FeatureFlags_NothingSet_IsOmitted()
+	public void HotkeyBackend_NotSet_IsOmitted()
 	{
-		// Arrange (e.g. the GUI always instantiates the object, so its settings can be bound)
-		_opts.FeatureFlags = new();
-
 		// Act
 		var act = _svc.Write(_opts);
 
 		// Assert
-		Assert.IsFalse(act.Contains("FeatureFlags", StringComparison.Ordinal), $"Expected no 'FeatureFlags' in:\n{act}");
+		Assert.IsFalse(act.Contains("HotkeyBackend", StringComparison.Ordinal), $"Expected no 'HotkeyBackend' in:\n{act}");
 	}
 }

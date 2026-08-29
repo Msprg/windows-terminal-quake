@@ -454,21 +454,21 @@ Applications to enable Quake-style dropdown for.
 }
 ```
 
-##### Feature flags
+##### Hotkey backend
 
-<p>Sometimes functionality is added or changed that carries more risk of introducing bugs.</p>
-<p>For these cases, such functionality can be put behind a "feature flag", which makes them opt-in or opt-out.</p>
-<p>That way, we can still merge to master, and make it part of the stable release version (reducing branches and dev builds and what not),
-but still have a way back should things go awry, without necessarily reverting to a previous version.</p>
+<p>(Windows only) How hotkeys are registered with the OS.</p>
+
+Defaults to `SharpHook`
+
+- **SharpHook**<br/>Uses a low-level keyboard hook. Supports the most keys (including the "Windows", or "Super" modifier), and hotkeys can be suspended while editing them in the GUI. Does **not** receive key presses while a window that runs as administrator (elevated) has focus.
+
+- **RegisterHotKey**<br/>Registers hotkeys with Windows. Hotkeys are matched by Windows itself, and keep working while an elevated window has focus. The "Windows" modifier is not available with this backend.
+
+Requires a restart of WTQ to take effect.
 
 ```json
 {
-	"FeatureFlags": {
-		// (Windows only) Use SharpHook (keyboard hook) for hotkeys. Defaults to true.
-		// Set to false to register hotkeys through RegisterHotKey instead, which also works while an elevated
-		// (administrator) window has focus, but requires hotkeys to be specified as "Key" codes instead of "KeyChar".
-		"SharpHook": true
-	}
+	"HotkeyBackend": "SharpHook | RegisterHotKey"
 	// ...
 }
 ```
