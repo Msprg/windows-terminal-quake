@@ -249,8 +249,8 @@ public abstract class PlatformServiceBase : IPlatformService
 			// around as our parent process for as long as we run. Those are not WTQ instances, so skip processes
 			// that run a different executable than we do.
 			// If we can't determine the other process' executable (e.g. because it runs elevated), assume it's WTQ.
-			var otherPath = GetProcessPath(other);
-			if (selfPath != null && otherPath != null && !IsSamePath(selfPath, otherPath))
+			var otherPath = other.GetPathOrNull();
+			if (selfPath != null && otherPath != null && !selfPath.IsSamePathAs(otherPath))
 			{
 				Log.LogDebug("Ignoring process with PID {Pid}: same name as us, but a different executable ('{Path}')", other.Id, otherPath);
 				continue;
@@ -261,34 +261,6 @@ public abstract class PlatformServiceBase : IPlatformService
 		}
 
 		return false;
-	}
-
-	/// <summary>
-	/// Returns the path to the executable of the specified <paramref name="process"/>, or null if it cannot be determined
-	/// (e.g. because the process runs with higher privileges than we do).
-	/// </summary>
-	private static string? GetProcessPath(Process process)
-	{
-		try
-		{
-			return process.MainModule?.FileName;
-		}
-		catch (Exception)
-		{
-			return null;
-		}
-	}
-
-	/// <summary>
-	/// Compares 2 paths, case-insensitively on Windows.
-	/// </summary>
-	private static bool IsSamePath(string path1, string path2)
-	{
-		var comparison = OperatingSystem.IsWindows()
-			? StringComparison.OrdinalIgnoreCase
-			: StringComparison.Ordinal;
-
-		return string.Equals(Path.GetFullPath(path1), Path.GetFullPath(path2), comparison);
 	}
 
 	/// <inheritdoc/>

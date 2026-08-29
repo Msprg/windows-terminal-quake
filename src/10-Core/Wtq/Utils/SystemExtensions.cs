@@ -21,6 +21,21 @@ public static class SystemExtensions
 		return Path.GetFileNameWithoutExtension(fileName)?.EmptyOrWhiteSpaceToNull() ?? fileName;
 	}
 
+	/// <summary>
+	/// Returns whether the 2 specified paths point to the same location (case-insensitively on Windows).
+	/// </summary>
+	public static bool IsSamePathAs(this string path1, string path2)
+	{
+		Guard.Against.NullOrWhiteSpace(path1);
+		Guard.Against.NullOrWhiteSpace(path2);
+
+		var comparison = OperatingSystem.IsWindows()
+			? StringComparison.OrdinalIgnoreCase
+			: StringComparison.Ordinal;
+
+		return string.Equals(Path.GetFullPath(path1), Path.GetFullPath(path2), comparison);
+	}
+
 	public static TValue JsonDeepClone<TValue>(this TValue value)
 	{
 		var json = JsonSerializer.Serialize(value);
