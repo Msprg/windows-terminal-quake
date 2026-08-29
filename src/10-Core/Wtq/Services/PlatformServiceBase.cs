@@ -240,13 +240,23 @@ public abstract class PlatformServiceBase : IPlatformService
 	{
 		// Get a reference to this process, so we can filter it out when looking for other processes.
 		var self = Process.GetCurrentProcess();
+		var selfPath = Environment.ProcessPath;
 
 		// Look for other WTQ processes.
-		var otherWtq = Process.GetProcessesByName(self.ProcessName).FirstOrDefault(p => p.Id != self.Id);
-
-		if (otherWtq != null)
+		foreach (var other in Process.GetProcessesByName(self.ProcessName).Where(p => p.Id != self.Id))
 		{
-			Log.LogWarning("Found other WTQ process (PID:{Pid})", otherWtq.Id);
+			// Launchers such as Scoop's shims are named after the app they start (i.e. also "wtq.exe"), and stay
+			// around as our parent process for as long as we run. Those are not WTQ instances, so skip processes
+			// that run a different executable than we do.
+			// If we can't determine the other process' executable (e.g. because it runs elevated), assume it's WTQ.
+			var otherPath = other.GetPathOrNull();
+			if (selfPath != null && otherPath != null && !selfPath.IsSamePathAs(otherPath))
+			{
+				Log.LogDebug("Ignoring process with PID {Pid}: same name as us, but a different executable ('{Path}')", other.Id, otherPath);
+				continue;
+			}
+
+			Log.LogWarning("Found other WTQ process (PID:{Pid})", other.Id);
 			return true;
 		}
 

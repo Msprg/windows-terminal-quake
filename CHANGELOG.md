@@ -3,6 +3,7 @@
 ## [vFuture]
 
 ## [vNext]
+- Bugfix: Windows - When WTQ was started through a launcher that is also named "wtq.exe" (such as the Scoop shim), the single-instance check mistook the launcher for another WTQ instance, and WTQ exited immediately. Processes running a different executable are now ignored.
 - Feature: Windows - "HotkeyBackend" setting ("SharpHook" (default) or "RegisterHotKey"), replacing the "FeatureFlags.SharpHook" flag (which was also lost when saving settings from the GUI). Can be set from the global settings page.
 - Feature: Windows - The "RegisterHotKey" backend now accepts "KeyChar" hotkeys too (resolved through the current keyboard layout).
 - Feature: "Start" attach mode. Only attaches to windows that WTQ started itself, so pre-existing (or later opened) windows of the same app are left alone. The started window is remembered, so it is picked up again after a WTQ restart.
