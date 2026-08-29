@@ -751,6 +751,8 @@ Defaults to `FindOrStart`
 
 - **Manual**<br/>Attach to **whatever app is in the foreground** when pressing an assigned hotkey.
 
+- **Start**<br/>**Start** a new app instance, and only attach to **that** (never to windows WTQ did not start). The started window is remembered across WTQ restarts.<br/>Useful for apps where you also want regular windows, that WTQ should leave alone (like Windows Terminal).
+
 ```json
 {
 	// Globally:

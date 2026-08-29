@@ -3,6 +3,7 @@
 ## [vFuture]
 
 ## [vNext]
+- Feature: "Start" attach mode. Only attaches to windows that WTQ started itself, so pre-existing (or later opened) windows of the same app are left alone. The started window is remembered, so it is picked up again after a WTQ restart.
 - Bugfix: Windows - When bringing a window to the foreground, WTQ no longer simulates an "Alt" key press. Doing so released a physically-held Alt (breaking Alt-based hotkeys until Alt was released and pressed again), and activated the menu bar in the previously focused app. Now uses `AttachThreadInput`, with an unassigned virtual key as a last resort (#388).
 
 ## [v2.2.0] / 2026-xx-xx
