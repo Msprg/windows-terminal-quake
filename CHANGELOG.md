@@ -3,6 +3,8 @@
 ## [vFuture]
 
 ## [vNext]
+- Feature: Windows - "HotkeyBackend" setting ("SharpHook" (default) or "RegisterHotKey"), replacing the "FeatureFlags.SharpHook" flag (which was also lost when saving settings from the GUI). Can be set from the global settings page.
+- Feature: Windows - The "RegisterHotKey" backend now accepts "KeyChar" hotkeys too (resolved through the current keyboard layout).
 - Feature: "Start" attach mode. Only attaches to windows that WTQ started itself, so pre-existing (or later opened) windows of the same app are left alone. The started window is remembered, so it is picked up again after a WTQ restart.
 - Bugfix: Windows - When bringing a window to the foreground, WTQ no longer simulates an "Alt" key press. Doing so released a physically-held Alt (breaking Alt-based hotkeys until Alt was released and pressed again), and activated the menu bar in the previously focused app. Now uses `AttachThreadInput`, with an unassigned virtual key as a last resort (#388).
 

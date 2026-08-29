@@ -167,6 +167,15 @@
 			</RadzenStack>
 		</RadzenFieldset>
 
+		<RadzenFieldset Text="Hotkeys">
+			<RadzenStack Gap="1rem">
+
+				<!-- Hotkey backend -->
+				<WtqSettingRadio					TProperty="HotkeyBackend"			Get="() => GlobalOpts.HotkeyBackend"				Set="v => GlobalOpts.HotkeyBackend = v"					Default="() => GlobalOpts.HotkeyBackend" />
+
+			</RadzenStack>
+		</RadzenFieldset>
+
 	</RadzenStack>
 
 	<!-- Save/Discard -->
