@@ -28,11 +28,9 @@ public enum AttachMode
 	Manual,
 
 	/// <summary>
-	/// <b>Only</b> attach to app instances that <b>WTQ started itself</b>, never to ones that already existed.<br/>
-	/// The started window is remembered, so it is picked up again after a WTQ restart.<br/>
-	/// <br/>
-	/// Useful for apps like Windows Terminal, where you may want to keep opening regular windows, without WTQ grabbing them.
+	/// <b>Start</b> a new app instance, and only attach to <b>that</b> (never to windows WTQ did not start).<br/>
+	/// Useful for apps where you also want regular windows, that WTQ should leave alone (like Windows Terminal).
 	/// </summary>
-	[Display(Name = "Start only")]
-	StartOnly,
+	[Display(Name = "Start")]
+	Start,
 }

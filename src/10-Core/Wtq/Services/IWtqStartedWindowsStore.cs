@@ -3,7 +3,7 @@ namespace Wtq.Services;
 /// <summary>
 /// Remembers which window WTQ started for each app, across WTQ restarts.<br/>
 /// <br/>
-/// Used by <see cref="AttachMode.StartOnly"/>, so that WTQ can re-attach to a window it started earlier
+/// Used by <see cref="AttachMode.Start"/>, so that WTQ can re-attach to a window it started earlier
 /// (e.g. after WTQ itself was restarted), while still never attaching to windows it did not start.
 /// </summary>
 public interface IWtqStartedWindowsStore

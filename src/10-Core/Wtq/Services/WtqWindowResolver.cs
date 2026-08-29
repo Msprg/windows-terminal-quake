@@ -7,7 +7,7 @@ public sealed class WtqWindowResolver(
 	: IWtqWindowResolver
 {
 	/// <summary>
-	/// How long we keep looking for a window that should appear after we started a process, in <see cref="AttachMode.StartOnly"/> mode.<br/>
+	/// How long we keep looking for a window that should appear after we started a process, in <see cref="AttachMode.Start"/> mode.<br/>
 	/// Some apps (like Windows Terminal) can take a good number of seconds between process start and window creation.
 	/// </summary>
 	private static readonly TimeSpan PendingStartTimeout = TimeSpan.FromSeconds(30);
@@ -18,7 +18,7 @@ public sealed class WtqWindowResolver(
 	private readonly IWtqStartedWindowsStore _startedWindows = Guard.Against.Null(startedWindows);
 
 	/// <summary>
-	/// Per app name, keeps track of a process we started, but of which we haven't seen a window yet (see <see cref="AttachMode.StartOnly"/>).
+	/// Per app name, keeps track of a process we started, but of which we haven't seen a window yet (see <see cref="AttachMode.Start"/>).
 	/// </summary>
 	private readonly ConcurrentDictionary<string, PendingStart> _pendingStarts = new(StringComparer.OrdinalIgnoreCase);
 
@@ -37,8 +37,8 @@ public sealed class WtqWindowResolver(
 			case AttachMode.Find:
 				return await FindOrStartAsync(opts, false).NoCtx();
 
-			case AttachMode.StartOnly:
-				return await StartOnlyAsync(opts, allowStartNew).NoCtx();
+			case AttachMode.Start:
+				return await StartAsync(opts, allowStartNew).NoCtx();
 
 			default:
 			case AttachMode.FindOrStart:
@@ -56,7 +56,7 @@ public sealed class WtqWindowResolver(
 	/// The window that was eventually attached to is remembered (see <see cref="IWtqStartedWindowsStore"/>),
 	/// so it can be re-attached to after WTQ restarts.
 	/// </summary>
-	private async Task<WtqWindow?> StartOnlyAsync(WtqAppOptions opts, bool allowStartNew)
+	private async Task<WtqWindow?> StartAsync(WtqAppOptions opts, bool allowStartNew)
 	{
 		var appName = opts.Name ?? string.Empty;
 
@@ -111,7 +111,7 @@ public sealed class WtqWindowResolver(
 		if (!allowStartNew)
 		{
 			// We're only allowed to attach to windows we started ourselves, so without starting, there's nothing to look for.
-			_log.LogDebug("Using start-only attach mode for app with options {Options}, not allowed to start a new instance, so not looking for windows", opts);
+			_log.LogDebug("Using start attach mode for app with options {Options}, not allowed to start a new instance, so not looking for windows", opts);
 			return null;
 		}
 
@@ -120,7 +120,7 @@ public sealed class WtqWindowResolver(
 			.Select(w => w.Id)
 			.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-		_log.LogInformation("Using start-only attach mode for app with options {Options}, starting new instance (ignoring {Count} pre-existing windows)", opts, preExisting.Count);
+		_log.LogInformation("Using start attach mode for app with options {Options}, starting new instance (ignoring {Count} pre-existing windows)", opts, preExisting.Count);
 
 		try
 		{

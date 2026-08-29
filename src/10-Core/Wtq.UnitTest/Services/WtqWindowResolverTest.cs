@@ -22,10 +22,10 @@ public class WtqWindowResolverTest
 	}
 
 	[TestMethod]
-	public async Task StartOnly_NotAllowedToStart_DoesNotAttachToPreExistingWindow()
+	public async Task Start_NotAllowedToStart_DoesNotAttachToPreExistingWindow()
 	{
 		// Arrange
-		var opts = CreateOpts(AttachMode.StartOnly);
+		var opts = CreateOpts(AttachMode.Start);
 
 		_windowService
 			.Setup(s => s.FindWindowsAsync(opts, It.IsAny<CancellationToken>()))
@@ -41,10 +41,10 @@ public class WtqWindowResolverTest
 	}
 
 	[TestMethod]
-	public async Task StartOnly_AllowedToStart_IgnoresPreExistingWindowAndAttachesToNewOne()
+	public async Task Start_AllowedToStart_IgnoresPreExistingWindowAndAttachesToNewOne()
 	{
 		// Arrange
-		var opts = CreateOpts(AttachMode.StartOnly);
+		var opts = CreateOpts(AttachMode.Start);
 		var windows = new List<WtqWindow> { _preExisting };
 
 		_windowService
@@ -68,10 +68,10 @@ public class WtqWindowResolverTest
 	}
 
 	[TestMethod]
-	public async Task StartOnly_RememberedWindowStillAround_ReattachesWithoutStarting()
+	public async Task Start_RememberedWindowStillAround_ReattachesWithoutStarting()
 	{
 		// Arrange (e.g. WTQ was restarted, while the window it started earlier is still open)
-		var opts = CreateOpts(AttachMode.StartOnly);
+		var opts = CreateOpts(AttachMode.Start);
 
 		_startedWindows
 			.Setup(s => s.GetWindowId(opts.Name!))
@@ -91,10 +91,10 @@ public class WtqWindowResolverTest
 	}
 
 	[TestMethod]
-	public async Task StartOnly_RememberedWindowGone_ForgetsItAndDoesNotAttachToOthers()
+	public async Task Start_RememberedWindowGone_ForgetsItAndDoesNotAttachToOthers()
 	{
 		// Arrange
-		var opts = CreateOpts(AttachMode.StartOnly);
+		var opts = CreateOpts(AttachMode.Start);
 
 		_startedWindows
 			.Setup(s => s.GetWindowId(opts.Name!))
@@ -115,10 +115,10 @@ public class WtqWindowResolverTest
 	}
 
 	[TestMethod]
-	public async Task StartOnly_WindowAppearsLate_KeepsLookingWithoutStartingAgain()
+	public async Task Start_WindowAppearsLate_KeepsLookingWithoutStartingAgain()
 	{
 		// Arrange
-		var opts = CreateOpts(AttachMode.StartOnly);
+		var opts = CreateOpts(AttachMode.Start);
 		var windows = new List<WtqWindow> { _preExisting };
 
 		_windowService
