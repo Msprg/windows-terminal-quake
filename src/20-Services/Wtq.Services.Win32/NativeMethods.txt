@@ -33,3 +33,13 @@ VK_MENU
 WM_NULL
 WM_PAINT
 WS_EX_LAYERED
+GetWindow
+GET_WINDOW_CMD
+IsWindowVisible
+OpenProcess
+PROCESS_ACCESS_RIGHTS
+PROCESS_NAME_FORMAT
+QueryFullProcessImageName
+WaitForSingleObject
+WAIT_EVENT
+CloseHandle

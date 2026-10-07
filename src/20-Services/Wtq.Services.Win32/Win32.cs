@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Console;
+using Windows.Win32.System.Threading;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -22,6 +23,12 @@ public class Win32 : IWin32
 	private const int HWND_TOPMOST = -1;
 	private const uint WM_NULL = 0x0000;
 	private const int WS_EX_LAYERED = 0x80000;
+
+	/// <summary>
+	/// Win32 error code returned by OpenProcess() when no process with the specified id exists.
+	/// (A plain constant, as having CsWin32 generate the full WIN32_ERROR enum adds ~200KB to the assembly.)
+	/// </summary>
+	private const int ERROR_INVALID_PARAMETER = 87;
 
 	/// <summary>
 	/// A virtual key code that is not assigned to any key (see "Virtual-Key Codes" on MSDN).<br/>
@@ -56,7 +63,7 @@ public class Win32 : IWin32
 
 	/// <inheritdoc/>
 	public Win32Window? GetWindow(nint windowHandle) =>
-		GetWin32Window((HWND)windowHandle);
+		GetWin32Window((HWND)windowHandle, mainWindows: null, processNames: null);
 
 	/// <inheritdoc/>
 	public string? GetWindowClass(nint windowHandle)
@@ -69,26 +76,67 @@ public class Win32 : IWin32
 	}
 
 	/// <inheritdoc/>
-	public ICollection<Win32Window> GetWindowList()
+	public unsafe ICollection<Win32Window> GetWindowList()
 	{
 		_log.LogTrace("{MethodName}", nameof(GetWindowList));
 
+		var sw = Stopwatch.StartNew();
+
+		var windowHandles = EnumerateWindowHandles();
+
+		// Figure out the main window of each process up front, using the (z-ordered) list of windows we already have.
+		// This mirrors what System.Diagnostics.Process.MainWindowHandle does, without the per-process EnumWindows() call.
+		var mainWindows = new Dictionary<uint, HWND>();
+		foreach (var windowHandle in windowHandles)
+		{
+			uint processId = 0;
+			_ = PI.GetWindowThreadProcessId(windowHandle, &processId);
+
+			if (processId == 0 || mainWindows.ContainsKey(processId) || !IsMainWindowCandidate(windowHandle))
+			{
+				continue;
+			}
+
+			mainWindows[processId] = windowHandle;
+		}
+
+		// Process names are looked up once per process, instead of once per window.
+		var processNames = new Dictionary<uint, string?>();
+
+		// Turn the list of handles into a list of objects that contain info about the windows.
+		var windows = windowHandles
+			.Select(h => GetWin32Window(h, mainWindows, processNames))
+			.Where(w => w != null)
+			.Select(w => w!)
+			.ToList();
+
+		_log.LogDebug("{MethodName} Found {WindowCount} windows across {ProcessCount} processes, took {Elapsed}", nameof(GetWindowList), windows.Count, processNames.Count, sw.Elapsed);
+
+		return windows;
+	}
+
+	/// <summary>
+	/// Returns the handles of all top-level windows, in z-order (topmost first), as reported by <see cref="PI.EnumWindows(WNDENUMPROC, LPARAM)"/>.
+	/// </summary>
+	private static List<HWND> EnumerateWindowHandles()
+	{
 		// Create an empty list of window handles we'll pass to ReportWindow, for it to add the window that was found.
 		var windowHandles = new List<HWND>();
 
 		// Pin the list so it doesn't get moved by GC.
 		var listHandle = GCHandle.Alloc(windowHandles);
-		var listHandlePtr = GCHandle.ToIntPtr(listHandle);
 
-		// Now ask EnumWindows to fill up the list.
-		PI.EnumWindows(ReportWindow, listHandlePtr);
+		try
+		{
+			// Now ask EnumWindows to fill up the list.
+			PI.EnumWindows(ReportWindow, GCHandle.ToIntPtr(listHandle));
+		}
+		finally
+		{
+			listHandle.Free();
+		}
 
-		// Turn the list of handles into a list of objects that contain info about the windows.
-		return windowHandles
-			.Select(GetWin32Window)
-			.Where(w => w != null)
-			.Select(w => w!)
-			.ToList();
+		return windowHandles;
 	}
 
 	/// <inheritdoc/>
@@ -401,9 +449,19 @@ public class Win32 : IWin32
 	}
 
 	/// <summary>
-	/// Takes a window handle, and returns a decorated <see cref="Win32Window"/>.
+	/// Takes a window handle, and returns a decorated <see cref="Win32Window"/>.<br/>
+	/// <br/>
+	/// Note that this deliberately does not use <see cref="Process"/> (e.g. <see cref="Process.GetProcessById(int)"/>, <see cref="Process.ProcessName"/>),
+	/// as those take a snapshot of every process and thread on the system on each call. With many windows (and/or a busy system),
+	/// doing that once per window makes a single window scan take far longer than the startup- and update timeouts.
 	/// </summary>
-	private unsafe Win32Window? GetWin32Window(HWND windowHandle)
+	/// <param name="windowHandle">The window to describe.</param>
+	/// <param name="mainWindows">Optional per-process main window lookup, as computed by <see cref="GetWindowList"/>. When null, the main window is looked up for just this process.</param>
+	/// <param name="processNames">Optional per-process name cache, shared across a single window scan.</param>
+	private unsafe Win32Window? GetWin32Window(
+		HWND windowHandle,
+		IReadOnlyDictionary<uint, HWND>? mainWindows,
+		Dictionary<uint, string?>? processNames)
 	{
 		var style = PI.GetWindowLong(windowHandle, WINDOW_LONG_PTR_INDEX.GWL_STYLE);
 
@@ -428,36 +486,32 @@ public class Win32 : IWin32
 		// Fetch the window title.
 		var windowTitle = GetWindowTitle(windowHandle);
 
-		// Get information about the owning process.
-		Process? ownerProcess = null;
-		try
+		// Fetch the name of the owning process (cached per process, if we're in the middle of a scan).
+		if (processNames == null || !processNames.TryGetValue(processId, out var processName))
 		{
-			ownerProcess = Process.GetProcessById((int)processId);
-		}
-		catch (Exception ex)
-		{
-			_log.LogWarning(
-				ex,
-				"Could not get process info for window handle {WindowHandle}, process with id {ProcessId}, window class {WindowClass} and window title {WindowTitle}: {Message}",
-				windowHandle,
-				processId,
-				windowClass,
-				windowTitle,
-				ex.Message);
-
-			return null;
+			processName = GetProcessName(processId);
+			processNames?.Add(processId, processName);
 		}
 
 		// Figure out whether this is the process's main window.
-		var isMainWindow = ownerProcess.MainWindowHandle.Equals(windowHandle);
+		HWND mainWindowHandle;
+		if (mainWindows != null)
+		{
+			_ = mainWindows.TryGetValue(processId, out mainWindowHandle);
+		}
+		else
+		{
+			mainWindowHandle = FindMainWindowHandle(processId);
+		}
 
 		// Construct return object.
-		return new Win32Window(() => ownerProcess.HasExited)
+		var ownerProcessId = processId; // Copy, since a local whose address was taken can't be captured by a lambda.
+		return new Win32Window(() => HasProcessExited(ownerProcessId))
 		{
-			IsMainWindow = isMainWindow,
-			MainWindowHandle = ownerProcess.MainWindowHandle,
+			IsMainWindow = mainWindowHandle == windowHandle,
+			MainWindowHandle = (nint)mainWindowHandle,
 			ProcessId = processId,
-			ProcessName = ownerProcess.ProcessName,
+			ProcessName = processName,
 			Rect = new(rt.left, rt.top, rt.right - rt.left, rt.bottom - rt.top),
 			Style = style,
 			ThreadId = threadId,
@@ -465,5 +519,96 @@ public class Win32 : IWin32
 			WindowClass = windowClass,
 			WindowHandle = windowHandle,
 		};
+	}
+
+	/// <summary>
+	/// Whether the specified window qualifies as a process' "main window", using the same rule as
+	/// <see cref="Process.MainWindowHandle"/>: a visible top-level window that has no owner.
+	/// </summary>
+	private static bool IsMainWindowCandidate(HWND windowHandle) =>
+		PI.GetWindow(windowHandle, GET_WINDOW_CMD.GW_OWNER).IsNull &&
+		PI.IsWindowVisible(windowHandle);
+
+	/// <summary>
+	/// Returns the main window of the process with the specified id (see <see cref="IsMainWindowCandidate"/>), or <see cref="HWND.Null"/> if it doesn't have one.
+	/// </summary>
+	private static unsafe HWND FindMainWindowHandle(uint processId)
+	{
+		foreach (var windowHandle in EnumerateWindowHandles())
+		{
+			uint windowProcessId = 0;
+			_ = PI.GetWindowThreadProcessId(windowHandle, &windowProcessId);
+
+			if (windowProcessId == processId && IsMainWindowCandidate(windowHandle))
+			{
+				return windowHandle;
+			}
+		}
+
+		return HWND.Null;
+	}
+
+	/// <summary>
+	/// Returns the name of the process with the specified id, in the same form as <see cref="Process.ProcessName"/> (file name without ".exe").<br/>
+	/// Returns null if the process could not be opened (e.g. because it runs at a higher privilege level, or has exited).
+	/// </summary>
+	private unsafe string? GetProcessName(uint processId)
+	{
+		var processHandle = PI.OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+
+		if (processHandle.IsNull)
+		{
+			_log.LogDebug("{Method} Could not open process with id {ProcessId}: {Error}", nameof(GetProcessName), processId, new Win32Exception().Message);
+			return null;
+		}
+
+		try
+		{
+			var buffer = new char[1024];
+			var size = (uint)buffer.Length;
+
+			fixed (char* pBuffer = buffer)
+			{
+				if (!PI.QueryFullProcessImageName(processHandle, PROCESS_NAME_FORMAT.PROCESS_NAME_WIN32, new PWSTR(pBuffer), &size))
+				{
+					_log.LogDebug("{Method} Could not get image name of process with id {ProcessId}: {Error}", nameof(GetProcessName), processId, new Win32Exception().Message);
+					return null;
+				}
+			}
+
+			var fileName = Path.GetFileName(new string(buffer, 0, (int)size));
+
+			return fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+				? fileName[..^4]
+				: fileName;
+		}
+		finally
+		{
+			_ = PI.CloseHandle(processHandle);
+		}
+	}
+
+	/// <summary>
+	/// Whether the process with the specified id has exited.<br/>
+	/// If the process can't be opened for some reason other than it not existing, we assume it's still running (like <see cref="Process.HasExited"/> does).
+	/// </summary>
+	private static bool HasProcessExited(uint processId)
+	{
+		var processHandle = PI.OpenProcess(PROCESS_ACCESS_RIGHTS.PROCESS_SYNCHRONIZE, false, processId);
+
+		if (processHandle.IsNull)
+		{
+			// ERROR_INVALID_PARAMETER is what we get when there is no process with the specified id (anymore).
+			return Marshal.GetLastWin32Error() == ERROR_INVALID_PARAMETER;
+		}
+
+		try
+		{
+			return PI.WaitForSingleObject(processHandle, 0) == WAIT_EVENT.WAIT_OBJECT_0;
+		}
+		finally
+		{
+			_ = PI.CloseHandle(processHandle);
+		}
 	}
 }
