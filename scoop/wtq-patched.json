@@ -1,12 +1,12 @@
 {
-    "version": "2.1.0-patched.1",
+    "version": "2.1.0-patched.2",
     "description": "Turn any app into a Quake-style toggleable app. (Patched build from the Msprg fork; see the release notes for what differs from upstream.)",
     "homepage": "https://github.com/Msprg/windows-terminal-quake",
     "license": "MIT",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Msprg/windows-terminal-quake/releases/download/v2.1.0-patched.1/win-x64_self-contained.zip",
-            "hash": "b06fec9e60297cdf6ae4027c9f52d4e0b6b20dede4ccac70fa5d8879ef270ff5"
+            "url": "https://github.com/Msprg/windows-terminal-quake/releases/download/v2.1.0-patched.2/win-x64_self-contained.zip",
+            "hash": "ac7a1a129adc37e3db42d1688581e4eae80d7783332ffd3aca0d58bb748ef7ff"
         }
     },
     "bin": "wtq.exe",
