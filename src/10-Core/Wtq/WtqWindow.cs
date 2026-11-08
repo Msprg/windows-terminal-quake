@@ -113,6 +113,13 @@ public abstract class WtqWindow
 
 	public abstract Task UpdateAsync();
 
+	/// <summary>
+	/// Whether this window is (directly or indirectly) owned by the specified <paramref name="owner"/> window, as is the case
+	/// for dialogs opened from an app's main window.<br/>
+	/// Used so that focus moving between an app and its dialogs doesn't count as the app losing focus.
+	/// </summary>
+	public virtual bool IsOwnedBy(WtqWindow owner) => false;
+
 	public override string ToString() => $"[{Id}] {Name}";
 
 	#region Equality

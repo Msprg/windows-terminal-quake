@@ -25,6 +25,44 @@ public sealed class Win32WtqWindow : WtqWindow
 	public bool IsMainWindow =>
 		_window.IsMainWindow;
 
+	/// <summary>
+	/// Whether the window is owned by another window (as dialogs are, for example).
+	/// </summary>
+	public bool IsOwned =>
+		_window.OwnerHandle != 0;
+
+	/// <inheritdoc cref="Win32Window.IsToolWindow"/>
+	public bool IsToolWindow =>
+		_window.IsToolWindow;
+
+	/// <inheritdoc cref="Win32Window.IsVisible"/>
+	public bool IsVisible =>
+		_window.IsVisible;
+
+	/// <inheritdoc/>
+	public override bool IsOwnedBy(WtqWindow owner)
+	{
+		if (owner is not Win32WtqWindow ownerWindow)
+		{
+			return false;
+		}
+
+		// Walk up the chain of owners (bounded, just in case).
+		var current = _window.OwnerHandle;
+
+		for (var i = 0; i < 16 && current != 0; i++)
+		{
+			if (current == ownerWindow._window.WindowHandle)
+			{
+				return true;
+			}
+
+			current = _win32.GetWindowOwner(current);
+		}
+
+		return false;
+	}
+
 	public override bool IsValid =>
 		!_window.HasExited && // Check whether the process that owns the window is still running.
 		_win32.IsValidWindow(_window.WindowHandle); // Check whether the window itself is still valid (could be closed while the owning process is still running).

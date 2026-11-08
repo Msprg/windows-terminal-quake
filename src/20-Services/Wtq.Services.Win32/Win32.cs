@@ -23,6 +23,8 @@ public class Win32 : IWin32
 	private const int HWND_TOPMOST = -1;
 	private const uint WM_NULL = 0x0000;
 	private const int WS_EX_LAYERED = 0x80000;
+	private const int WS_EX_TOOLWINDOW = 0x00000080;
+	private const int WS_EX_NOACTIVATE = 0x08000000;
 
 	/// <summary>
 	/// Win32 error code returned by OpenProcess() when no process with the specified id exists.
@@ -137,6 +139,14 @@ public class Win32 : IWin32
 		}
 
 		return windowHandles;
+	}
+
+	/// <inheritdoc/>
+	public nint GetWindowOwner(nint windowHandle)
+	{
+		Guard.Against.OutOfRange(windowHandle, nameof(windowHandle), 1, nint.MaxValue);
+
+		return (nint)PI.GetWindow((HWND)windowHandle, GET_WINDOW_CMD.GW_OWNER);
 	}
 
 	/// <inheritdoc/>
@@ -464,6 +474,7 @@ public class Win32 : IWin32
 		Dictionary<uint, string?>? processNames)
 	{
 		var style = PI.GetWindowLong(windowHandle, WINDOW_LONG_PTR_INDEX.GWL_STYLE);
+		var exStyle = PI.GetWindowLong(windowHandle, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
 
 		uint processId = 0;
 		var threadId = PI.GetWindowThreadProcessId(windowHandle, &processId);
@@ -509,7 +520,11 @@ public class Win32 : IWin32
 		return new Win32Window(() => HasProcessExited(ownerProcessId))
 		{
 			IsMainWindow = mainWindowHandle == windowHandle,
+			IsNoActivate = (exStyle & WS_EX_NOACTIVATE) != 0,
+			IsToolWindow = (exStyle & WS_EX_TOOLWINDOW) != 0,
+			IsVisible = PI.IsWindowVisible(windowHandle),
 			MainWindowHandle = (nint)mainWindowHandle,
+			OwnerHandle = (nint)PI.GetWindow(windowHandle, GET_WINDOW_CMD.GW_OWNER),
 			ProcessId = processId,
 			ProcessName = processName,
 			Rect = new(rt.left, rt.top, rt.right - rt.left, rt.bottom - rt.top),

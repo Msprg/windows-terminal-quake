@@ -16,6 +16,45 @@ public class Win32WtqWindowTest
 	}
 
 	/// <summary>
+	/// Hidden windows that can't take focus, are tool windows, or have no title, are helper windows. Visible ones never are.
+	/// </summary>
+	[TestMethod]
+	[DataRow(false, true, false, "_q_titlebar", true)] // Qt 6 title bar helper.
+	[DataRow(false, false, false, "", true)] // Qt 6 theme/screen observer.
+	[DataRow(false, false, true, "Floating toolbar", true)]
+	[DataRow(false, false, false, "My database - KeePassXC", false)] // Main window, minimized to tray.
+	[DataRow(true, true, true, "", false)] // Visible windows are never filtered out.
+	public void IsHelperWindow(bool isVisible, bool isNoActivate, bool isToolWindow, string caption, bool expected)
+	{
+		var wnd = new Win32Window(() => false) { IsVisible = isVisible, IsNoActivate = isNoActivate, IsToolWindow = isToolWindow, WindowCaption = caption };
+
+		Assert.AreEqual(expected, wnd.IsHelperWindow);
+	}
+
+	/// <summary>
+	/// A window is owned by another when that other is somewhere up its owner chain.
+	/// </summary>
+	[TestMethod]
+	public void IsOwnedBy()
+	{
+		// Arrange
+		var main = new Win32WtqWindow(_win32.Object, new Win32Window(() => false) { WindowHandle = 100 });
+		var dialog = new Win32WtqWindow(_win32.Object, new Win32Window(() => false) { WindowHandle = 200, OwnerHandle = 100 });
+		var subDialog = new Win32WtqWindow(_win32.Object, new Win32Window(() => false) { WindowHandle = 300, OwnerHandle = 200 });
+		var unrelated = new Win32WtqWindow(_win32.Object, new Win32Window(() => false) { WindowHandle = 400, OwnerHandle = 999 });
+
+		_win32.Setup(w => w.GetWindowOwner(200)).Returns(100);
+		_win32.Setup(w => w.GetWindowOwner(999)).Returns(0);
+
+		// Act + Assert
+		Assert.IsTrue(dialog.IsOwnedBy(main), "direct owner");
+		Assert.IsTrue(subDialog.IsOwnedBy(main), "indirect owner");
+		Assert.IsFalse(main.IsOwnedBy(dialog), "owner is not owned by its dialog");
+		Assert.IsFalse(unrelated.IsOwnedBy(main), "unrelated window");
+		Assert.IsFalse(main.IsOwnedBy(main), "window does not own itself");
+	}
+
+	/// <summary>
 	/// Only a file name is specified, which is then used to match on process name.
 	/// </summary>
 	[TestMethod]

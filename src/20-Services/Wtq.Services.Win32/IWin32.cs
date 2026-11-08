@@ -30,6 +30,12 @@ public interface IWin32
 	ICollection<Win32Window> GetWindowList();
 
 	/// <summary>
+	/// Returns the handle of the window that owns the specified window (e.g. the main window of a dialog), or 0 if it has none.
+	/// </summary>
+	nint GetWindowOwner(
+		nint windowHandle);
+
+	/// <summary>
 	/// Returns the <see cref="Rectangle"/> describing the window with the specified <paramref name="windowHandle"/>.<br/>
 	/// Throws an exception if no rectangle could be obtained.
 	/// </summary>

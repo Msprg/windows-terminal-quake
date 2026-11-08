@@ -43,10 +43,15 @@ public sealed class Win32WindowService(IWin32 win32) :
 
 		// TODO: Logging
 
+		// When multiple windows match, prefer the main window, then visible ones, then ones that aren't owned by another
+		// window (dialogs), then ones that aren't tool windows. The rest is left in z-order.
 		return allWindows
 			.OfType<Win32WtqWindow>()
 			.Where(p => p.Matches(opts))
 			.OrderByDescending(w => w.IsMainWindow)
+			.ThenByDescending(w => w.IsVisible)
+			.ThenBy(w => w.IsOwned)
+			.ThenBy(w => w.IsToolWindow)
 			.Cast<WtqWindow>()
 			.ToList();
 	}
@@ -193,6 +198,10 @@ public sealed class Win32WindowService(IWin32 win32) :
 			_processes = _win32
 				.GetWindowList()
 				.Where(w => !w.Rect.Size.IsEmpty)
+
+				// Skip hidden helper windows (e.g. Qt 6's "_q_titlebar" windows, of which there is one for every dialog the app
+				// ever showed, or its theme/screen observer windows). They match on process name, but are never a sensible toggle target.
+				.Where(w => !w.IsHelperWindow)
 				.Select(w => (WtqWindow)new Win32WtqWindow(_win32, w))
 				.ToList();
 		}

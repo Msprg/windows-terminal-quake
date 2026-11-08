@@ -180,8 +180,8 @@ public sealed class WtqService : WtqHostedService
 		using var l = await _lock.WaitOneSecondAsync().NoCtx();
 
 		// Look for apps that are attached to the windows that got- and lost focus, respectively.
-		var appGotFocus = ev.GotFocusWindow != null ? _appRepo.GetByWindow(ev.GotFocusWindow) : null;
-		var appLostFocus = ev.LostFocusWindow != null ? _appRepo.GetByWindow(ev.LostFocusWindow) : null;
+		var appGotFocus = GetAppByWindowOrOwner(ev.GotFocusWindow);
+		var appLostFocus = GetAppByWindowOrOwner(ev.LostFocusWindow);
 
 		// Store the app that lost focus in our stack.
 		if (ev.LostFocusWindow != null)
@@ -208,5 +208,26 @@ public sealed class WtqService : WtqHostedService
 			_log.LogInformation("App '{App}' lost focus, closing", appLostFocus);
 			await appLostFocus.CloseAsync().NoCtx();
 		}
+	}
+
+	/// <summary>
+	/// Returns the app that is attached to the specified window, or to a window that owns it (e.g. when the window is a
+	/// dialog opened from the app's main window).<br/>
+	/// Focus moving to- or from such a dialog should be treated as focus moving to- or from the app itself.
+	/// </summary>
+	private WtqApp? GetAppByWindowOrOwner(WtqWindow? window)
+	{
+		if (window == null)
+		{
+			return null;
+		}
+
+		var app = _appRepo.GetByWindow(window);
+		if (app != null)
+		{
+			return app;
+		}
+
+		return _appRepo.GetAll().FirstOrDefault(a => a.Window != null && window.IsOwnedBy(a.Window));
 	}
 }
